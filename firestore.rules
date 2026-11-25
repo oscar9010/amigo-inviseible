@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // El id del chat es secreto e imposible de adivinar; no se puede listar la colección "chats".
+    match /chats/{chatId}/messages/{msgId} {
+      allow read: if true;
+      allow create: if request.resource.data.keys().hasOnly(['r', 't', 'at'])
+                    && request.resource.data.r in ['s', 'g']
+                    && request.resource.data.t is string
+                    && request.resource.data.t.size() > 0
+                    && request.resource.data.t.size() <= 500
+                    && request.resource.data.at == request.time;
+      allow update, delete: if false;
+    }
+  }
+}

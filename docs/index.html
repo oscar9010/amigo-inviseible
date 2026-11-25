@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amigo Invisible</title>
+<style>
+  :root { --bg:#fff8f1; --card:#fff; --ink:#2b2420; --mut:#7a6d64; --acc:#d9462f; --ok:#1f9d55; --line:#eadfd5; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#1b1715; --card:#26201d; --ink:#f3ebe4; --mut:#a89b91; --line:#3a312c; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui,sans-serif; }
+  main { max-width:560px; margin:0 auto; padding:20px 16px 60px; }
+  h1 { font-size:26px; margin:8px 0 4px; }
+  p.sub { color:var(--mut); margin:0 0 18px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; }
+  label { display:block; font-size:13px; color:var(--mut); margin:10px 0 4px; }
+  input { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:transparent; color:inherit; font:inherit; }
+  .row { display:flex; gap:8px; } .row > * { flex:1; }
+  button, a.btn { display:inline-block; padding:10px 14px; border:0; border-radius:10px; background:var(--acc); color:#fff; font:inherit; font-weight:600; cursor:pointer; text-decoration:none; text-align:center; }
+  button.sec, a.sec { background:transparent; color:var(--ink); border:1px solid var(--line); }
+  button.wa, a.wa { background:var(--ok); }
+  button.full { width:100%; margin-top:12px; }
+  ul { list-style:none; padding:0; margin:12px 0 0; }
+  li { display:flex; align-items:center; gap:8px; padding:8px 0; border-top:1px solid var(--line); }
+  li span.n { flex:1; } li small { color:var(--mut); }
+  .x { background:none; color:var(--mut); padding:4px 8px; }
+  .big { font-size:30px; font-weight:700; text-align:center; margin:14px 0; color:var(--acc); }
+  .hint { font-size:13px; color:var(--mut); }
+  .hide { display:none; }
+  .log { max-height:260px; overflow:auto; display:flex; flex-direction:column; gap:6px; margin:10px 0; }
+  .b { max-width:80%; padding:8px 12px; border-radius:14px; background:var(--line); word-wrap:break-word; }
+  .b.me { align-self:flex-end; background:var(--acc); color:#fff; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🎁 Amigo Invisible</h1>
+
+  <!-- Vista del participante -->
+  <section id="view" class="hide">
+    <p class="sub" id="vGroup"></p>
+    <div class="card">
+      <p>Hola <b id="vFrom"></b>, tu amigo invisible es un secreto. Asegúrate de que nadie mira tu pantalla.</p>
+      <button class="full" id="reveal">Ver a quién me tocó</button>
+      <div id="result" class="hide">
+        <div class="big" id="vTo"></div>
+        <p class="hint" id="vInfo"></p>
+      </div>
+    </div>
+    <div id="chats"></div>
+  </section>
+
+  <!-- Vista del organizador -->
+  <section id="admin">
+    <p class="sub">Sin cuentas ni servidor. Haz el sorteo y envía a cada persona su enlace secreto por WhatsApp.</p>
+
+    <div class="card">
+      <label>Nombre del grupo</label>
+      <input id="gName" placeholder="Navidad 2026" maxlength="60">
+      <div class="row">
+        <div><label>Presupuesto</label><input id="gBudget" placeholder="20 €" maxlength="20"></div>
+        <div><label>Fecha</label><input id="gDate" type="date"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <b>Participantes</b>
+      <div class="row">
+        <div><label>Nombre</label><input id="pName" maxlength="40"></div>
+        <div><label>WhatsApp (opcional)</label><input id="pPhone" inputmode="tel" placeholder="+34600000000"></div>
+      </div>
+      <button class="full sec" id="add">Añadir</button>
+      <ul id="list"></ul>
+      <button class="full" id="draw">Hacer sorteo</button>
+      <p class="hint" id="msg"></p>
+    </div>
+
+    <div class="card hide" id="results">
+      <b>Enlaces secretos</b>
+      <p class="hint">Envía cada enlace solo a su dueño. Cuando termines, cierra esta pestaña para no ver los resultados.</p>
+      <ul id="links"></ul>
+    </div>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const people = [];
+
+// ---- codificación del enlace (en el fragmento #, nunca llega a ningún servidor) ----
+const enc = o => btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const dec = s => JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')), c => c.charCodeAt(0))));
+
+function normPhone(raw) {
+  let s = String(raw || '').replace(/[^\d+]/g, '');
+  if (s.startsWith('00')) s = '+' + s.slice(2);
+  if (!s) return '';
+  if (!s.startsWith('+')) s = '+34' + s;
+  return /^\+\d{8,15}$/.test(s) ? s : null;
+}
+
+// ---- modo participante ----
+if (location.hash.length > 1) {
+  try {
+    const d = dec(location.hash.slice(1));
+    $('admin').classList.add('hide'); $('view').classList.remove('hide');
+    $('vGroup').textContent = d.g || 'Amigo invisible';
+    $('vFrom').textContent = d.f;
+    startChat(d);
+    $('reveal').onclick = () => {
+      $('vTo').textContent = d.t;
+      $('vInfo').textContent = [d.b && 'Presupuesto: ' + d.b, d.d && 'Fecha: ' + d.d].filter(Boolean).join(' · ');
+      $('result').classList.remove('hide'); $('reveal').classList.add('hide');
+    };
+  } catch { $('msg').textContent = 'Enlace no válido.'; }
+}
+
+// ---- chat en tiempo real (Firebase Firestore) ----
+// Pega aquí la configuración de tu app web de Firebase. Ver SETUP-CHAT.md
+const FIREBASE_CONFIG = null;
+
+async function startChat(d) {
+  const box = $('chats');
+  if (!FIREBASE_CONFIG || !d.c1) {
+    const p = document.createElement('p'); p.className = 'hint';
+    p.textContent = 'Los mensajes no están activados en este enlace.';
+    return box.append(p);
+  }
+  const V = '10.12.2', U = `https://www.gstatic.com/firebasejs/${V}/`;
+  const [{ initializeApp }, fs] = await Promise.all([import(U + 'firebase-app.js'), import(U + 'firebase-firestore.js')]);
+  const db = fs.getFirestore(initializeApp(FIREBASE_CONFIG));
+  const thread = (title, cid, role) => {
+    const card = document.createElement('div'); card.className = 'card';
+    const h = document.createElement('b'); h.textContent = title;
+    const log = document.createElement('div'); log.className = 'log';
+    const row = document.createElement('div'); row.className = 'row';
+    const inp = document.createElement('input'); inp.maxLength = 500; inp.placeholder = 'Escribe un mensaje…';
+    const btn = document.createElement('button'); btn.textContent = 'Enviar'; btn.style.flex = '0 0 auto';
+    row.append(inp, btn); card.append(h, log, row); box.append(card);
+    const col = fs.collection(db, 'chats', cid, 'messages');
+    const send = async () => {
+      const t = inp.value.trim(); if (!t) return; inp.value = '';
+      try { await fs.addDoc(col, { r: role, t, at: fs.serverTimestamp() }); } catch { inp.value = t; }
+    };
+    btn.onclick = send; inp.addEventListener('keydown', e => e.key === 'Enter' && send());
+    let first = true;
+    fs.onSnapshot(fs.query(col, fs.orderBy('at')), snap => {
+      log.replaceChildren(...snap.docs.map(doc => {
+        const m = doc.data(), b = document.createElement('div');
+        b.className = 'b' + (m.r === role ? ' me' : ''); b.textContent = m.t; return b;
+      }));
+      log.scrollTop = log.scrollHeight;
+      if (!first && document.hidden && snap.docChanges().some(c => c.type === 'added' && c.doc.data().r !== role)) {
+        document.title = '💬 Mensaje nuevo'; navigator.vibrate?.(200);
+      }
+      first = false;
+    });
+  };
+  thread('💬 Escríbele a tu amigo invisible (al que regalas)', d.c1, 's');
+  thread('💬 Tu amigo invisible (quien te regala) te escribe', d.c2, 'g');
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) document.title = 'Amigo Invisible'; });
+}
+
+// ---- modo organizador ----
+function render() {
+  $('list').replaceChildren(...people.map((p, i) => {
+    const li = document.createElement('li');
+    const n = document.createElement('span'); n.className = 'n'; n.textContent = p.name;
+    const s = document.createElement('small'); s.textContent = p.phone || 'sin WhatsApp';
+    const x = document.createElement('button'); x.className = 'x'; x.textContent = '✕';
+    x.onclick = () => { people.splice(i, 1); render(); };
+    li.append(n, s, x); return li;
+  }));
+}
+$('add').onclick = () => {
+  const name = $('pName').value.trim(), phone = normPhone($('pPhone').value);
+  if (!name) return $('msg').textContent = 'Escribe un nombre.';
+  if (phone === null) return $('msg').textContent = 'Número no válido (ej. +34600000000).';
+  if (people.some(p => p.name.toLowerCase() === name.toLowerCase())) return $('msg').textContent = 'Ese nombre ya está.';
+  people.push({ name, phone }); $('pName').value = $('pPhone').value = ''; $('msg').textContent = ''; render(); $('pName').focus();
+};
+$('pName').addEventListener('keydown', e => e.key === 'Enter' && $('add').click());
+
+$('draw').onclick = () => {
+  if (people.length < 3) return $('msg').textContent = 'Se necesitan al menos 3 personas.';
+  const order = [...people];
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
+    [order[i], order[j]] = [order[j], order[i]];
+  }
+  const base = location.href.split('#')[0];
+  const meta = { g: $('gName').value.trim(), b: $('gBudget').value.trim(), d: $('gDate').value };
+  const rid = () => enc(Array.from(crypto.getRandomValues(new Uint8Array(12))));
+  const chatIds = order.map(rid);
+  $('links').replaceChildren(...order.map((p, i) => {
+    const n = order.length;
+    const url = base + '#' + enc({ ...meta, f: p.name, t: order[(i + 1) % n].name, c1: chatIds[i], c2: chatIds[(i + n - 1) % n] });
+    const text = `🎁 Hola ${p.name}! Tu amigo invisible${meta.g ? ' de ' + meta.g : ''} está listo. Mira a quién te tocó (es secreto): ${url}`;
+    const li = document.createElement('li');
+    const n = document.createElement('span'); n.className = 'n'; n.textContent = p.name;
+    li.append(n);
+    if (p.phone) {
+      const a = document.createElement('a'); a.className = 'btn wa'; a.textContent = 'WhatsApp';
+      a.href = 'https://wa.me/' + p.phone.slice(1) + '?text=' + encodeURIComponent(text); a.target = '_blank'; a.rel = 'noopener';
+      li.append(a);
+    }
+    const c = document.createElement('button'); c.className = 'sec'; c.textContent = 'Copiar';
+    c.onclick = async () => { try { await navigator.clipboard.writeText(text); c.textContent = '¡Copiado!'; } catch { prompt('Copia el mensaje:', text); } };
+    li.append(c); return li;
+  }));
+  $('results').classList.remove('hide'); $('msg').textContent = '';
+  $('results').scrollIntoView({ behavior: 'smooth' });
+};
+</script>
+</body>
+</html>
