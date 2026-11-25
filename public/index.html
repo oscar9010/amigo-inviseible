@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Amigo invisible</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Lexend:wght@500;700&family=Figtree:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{--pine:#0f3d2e;--pine2:#165a43;--red:#d7263d;--gold:#f2b632;--bg:#f6f8f5;--card:#fff;--ink:#14231c;--muted:#5d6b64;--line:#dfe6e1}
+@media(prefers-color-scheme:dark){:root{--bg:#0b1511;--card:#13211b;--ink:#e9f1ec;--muted:#9fb2a8;--line:#24362d}}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 Figtree,system-ui,sans-serif}
+h1,h2,h3{font-family:Lexend,sans-serif;line-height:1.1;margin:0 0 .4em}
+h1{font-size:clamp(32px,7vw,48px)}h2{font-size:22px}h3{font-size:17px}
+.top{background:var(--pine);color:#fff;padding:28px max(5vw,16px) 64px;position:relative;overflow:hidden}
+.top::after{content:"";position:absolute;inset:auto 0 0 0;height:24px;background:
+ radial-gradient(circle at 12px 0,transparent 12px,var(--bg) 13px) 0 0/24px 24px repeat-x}
+.top .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.pill{background:rgba(255,255,255,.14);border-radius:99px;padding:4px 12px;font-size:14px;white-space:nowrap}
+.wrap{max-width:760px;margin:-40px auto 40px;padding:0 16px;display:grid;gap:16px;position:relative;z-index:1}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px}
+.card.hero{background:var(--red);color:#fff;border:0}
+.card.hero .name{font:700 clamp(30px,8vw,44px)/1.05 Lexend,sans-serif;margin:4px 0 12px}
+label{display:block;font-weight:600;font-size:14px;margin:12px 0 4px}
+input,textarea,select{width:100%;font:inherit;font-size:16px;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink)}
+textarea{min-height:80px;resize:vertical}
+input:focus,textarea:focus,select:focus,button:focus-visible{outline:3px solid var(--gold);outline-offset:1px}
+.row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0 12px}
+button{font:600 16px Figtree,sans-serif;min-height:44px;padding:0 18px;border-radius:10px;border:0;background:var(--pine2);color:#fff;cursor:pointer}
+button.red{background:var(--red)}button.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+button.sm{min-height:36px;padding:0 12px;font-size:14px}
+button:disabled{opacity:.5;cursor:default}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
+.muted{color:var(--muted);font-size:14px}
+.err{color:var(--red);font-weight:600;min-height:1.5em;margin-top:8px}
+.hero .err{color:#fff}
+ul.wish{list-style:none;padding:0;margin:8px 0}
+ul.wish li{padding:8px 0;border-top:1px solid var(--line);display:flex;gap:8px;align-items:center;justify-content:space-between}
+.hero ul.wish li{border-color:rgba(255,255,255,.3)}
+ul.wish a{color:inherit;font-weight:600}
+.chat{display:flex;flex-direction:column;gap:6px;max-height:340px;overflow-y:auto;padding:8px 0}
+.bub{max-width:80%;padding:8px 12px;border-radius:14px;background:var(--bg);border:1px solid var(--line);overflow-wrap:anywhere}
+.bub.mine{align-self:flex-end;background:var(--pine2);color:#fff;border:0}
+.bub small{display:block;opacity:.7;font-size:12px}
+.send{display:grid;grid-template-columns:1fr auto;gap:8px;margin-top:8px}
+details{border-top:1px solid var(--line);padding:10px 0}details summary{cursor:pointer;font-weight:600}
+.people li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+.people{list-style:none;padding:0;margin:0}
+.copy{display:grid;grid-template-columns:1fr auto;gap:8px}
+.gift{width:120px;height:120px;float:right;margin:-8px -4px 0 12px}
+@media(max-width:520px){.gift{width:84px;height:84px}}
+@media(prefers-reduced-motion:no-preference){.gift .lid{animation:hop 2.4s ease-in-out infinite;transform-origin:60px 46px}}
+@keyframes hop{0%,80%,100%{transform:translateY(0)}88%{transform:translateY(-8px) rotate(-4deg)}}
+</style>
+</head>
+<body>
+<header class="top" id="top"></header>
+<main class="wrap" id="app"><div class="card">Cargando…</div></main>
+
+<template id="giftsvg"><svg class="gift" viewBox="0 0 120 120" aria-hidden="true">
+<rect x="18" y="52" width="84" height="56" rx="6" fill="#d7263d"/><rect x="18" y="52" width="84" height="14" fill="#b81e31"/>
+<rect x="54" y="52" width="12" height="56" fill="#f2b632"/>
+<g class="lid"><rect x="12" y="38" width="96" height="18" rx="5" fill="#e8374d"/><rect x="54" y="38" width="12" height="18" fill="#f2b632"/>
+<path d="M60 38c-10-18-30-16-26-4 3 8 18 6 26 4zm0 0c10-18 30-16 26-4-3 8-18 6-26 4z" fill="none" stroke="#f2b632" stroke-width="6" stroke-linejoin="round"/></g>
+</svg></template>
+
+<script>
+{
+const $ = s => document.querySelector(s);
+const app = $('#app'), top = $('#top');
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const safeUrl = u => /^https?:\/\//i.test(u || '') ? esc(u) : '';
+const money = g => g.budget ? new Intl.NumberFormat('es-ES',{style:'currency',currency:g.currency||'EUR',maximumFractionDigits:0}).format(g.budget) : 'Sin presupuesto';
+const fdate = d => d ? new Date(d+'T12:00').toLocaleDateString('es-ES',{day:'numeric',month:'long'}) : null;
+const gift = () => $('#giftsvg').innerHTML;
+
+async function api(url, opts = {}) {
+  const r = await fetch(url, { headers: {'Content-Type':'application/json'}, ...opts, body: opts.body && JSON.stringify(opts.body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || 'Algo salió mal');
+  return j;
+}
+function header(title, g) {
+  top.innerHTML = `${gift()}<p class="muted" style="color:#cfe3d8;margin:0">Amigo invisible</p><h1>${esc(title)}</h1>` +
+    (g ? `<div class="meta"><span class="pill">🎁 ${esc(money(g))}</span>${g.date ? `<span class="pill">📅 ${esc(fdate(g.date))}</span>` : ''}${g.drawn ? '<span class="pill">✔ Sorteo hecho</span>' : ''}</div>` : '');
+}
+function copyBox(url) {
+  return `<div class="copy"><input readonly value="${esc(url)}"><button class="sm ghost" data-copy="${esc(url)}">Copiar</button></div>`;
+}
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-copy]'); if (!b) return;
+  try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = '¡Copiado!'; } catch { b.previousElementSibling.select(); }
+});
+const waShare = (url, text) => `https://wa.me/?text=${encodeURIComponent(text + ' ' + url)}`;
+
+// ---------- Inicio: crear grupo ----------
+function home() {
+  header('Organiza tu sorteo');
+  app.innerHTML = `<form class="card" id="f">
+    <h2>Nuevo grupo</h2>
+    <label for="gn">Nombre del grupo</label><input id="gn" required maxlength="80" placeholder="Navidad familia 2026">
+    <div class="row">
+      <div><label for="bu">Presupuesto del regalo</label><input id="bu" type="number" min="0" step="1" placeholder="25"></div>
+      <div><label for="cu">Moneda</label><select id="cu"><option>EUR</option><option>COP</option><option>USD</option></select></div>
+      <div><label for="dt">Día del intercambio</label><input id="dt" type="date"></div>
+    </div>
+    <h3 style="margin-top:20px">Tus datos (también participas)</h3>
+    <div class="row">
+      <div><label for="on">Tu nombre</label><input id="on" required maxlength="60"></div>
+      <div><label for="op">Tu WhatsApp</label><input id="op" required type="tel" placeholder="+34 600 000 000"></div>
+    </div>
+    <div class="err" id="er"></div>
+    <div class="actions"><button class="red">Crear grupo</button></div>
+    <p class="muted">Te llegará por WhatsApp tu enlace personal y el de organizador.</p></form>`;
+  $('#f').onsubmit = async e => {
+    e.preventDefault(); const btn = e.submitter; btn.disabled = true;
+    try {
+      const r = await api('/api/groups', { method:'POST', body: { name: $('#gn').value, budget: $('#bu').value, currency: $('#cu').value, date: $('#dt').value, organizer: { name: $('#on').value, phone: $('#op').value } } });
+      location.href = `/admin/${r.adminToken}?p=${r.token}`;
+    } catch (err) { $('#er').textContent = err.message; btn.disabled = false; }
+  };
+}
+
+// ---------- Unirse ----------
+async function join(code) {
+  let g; try { g = await api(`/api/invite/${code}`); } catch (e) { return fail(e); }
+  header(g.name, g);
+  app.innerHTML = `<form class="card" id="f">
+    <h2>Únete al sorteo</h2><p class="muted">${g.count} ${g.count === 1 ? 'persona apuntada' : 'personas apuntadas'}.</p>
+    ${g.drawn ? '<p class="err">El sorteo ya se hizo.</p>' : `
+    <label for="n">Tu nombre</label><input id="n" required maxlength="60">
+    <label for="p">Tu WhatsApp</label><input id="p" type="tel" required placeholder="+34 600 000 000">
+    <p class="muted">Aquí te llegarán los mensajes anónimos de tu amigo invisible. Nadie más del grupo ve tu número.</p>
+    <label for="w">Lista de deseos (una idea por línea, opcional)</label><textarea id="w" placeholder="Un libro de cocina&#10;Calcetines divertidos"></textarea>
+    <div class="err" id="er"></div><div class="actions"><button class="red">Unirme</button></div>`}</form>`;
+  if (g.drawn) return;
+  $('#f').onsubmit = async e => {
+    e.preventDefault(); const btn = e.submitter; btn.disabled = true;
+    const wishlist = $('#w').value.split('\n').map(t => ({ text: t.trim() })).filter(i => i.text);
+    try { const r = await api(`/api/invite/${code}/join`, { method:'POST', body: { name: $('#n').value, phone: $('#p').value, wishlist } }); location.href = `/p/${r.token}`; }
+    catch (err) { $('#er').textContent = err.message; btn.disabled = false; }
+  };
+}
+
+// ---------- Participante ----------
+let state = null, wishDraft = null;
+function wishList(items, editable) {
+  if (!items.length) return `<p class="muted">${editable ? 'Aún no has añadido nada.' : 'Todavía no ha puesto deseos.'}</p>`;
+  return `<ul class="wish">${items.map((i, k) => `<li><span>${safeUrl(i.link) ? `<a href="${safeUrl(i.link)}" target="_blank" rel="noopener">${esc(i.text)} ↗</a>` : esc(i.text)}</span>${editable ? `<button class="sm ghost" data-del="${k}" aria-label="Quitar">✕</button>` : ''}</li>`).join('')}</ul>`;
+}
+function chat(msgs, empty) {
+  if (!msgs.length) return `<div class="chat"><p class="muted">${empty}</p></div>`;
+  return `<div class="chat">${msgs.map(m => `<div class="bub ${m.mine ? 'mine' : ''}">${esc(m.body)}<small>${new Date(m.at.replace(' ','T')+'Z').toLocaleString('es-ES',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}${m.mine && m.status === 'failed' ? ' · no entregado por WhatsApp' : ''}</small></div>`).join('')}</div>`;
+}
+function sendForm(id, ph) {
+  return `<form class="send" data-send="${id}"><input maxlength="600" placeholder="${ph}" required><button class="sm">Enviar</button></form><div class="err" id="er-${id}"></div>`;
+}
+async function participant(token, quiet) {
+  try { state = await api(`/api/me/${token}`); } catch (e) { return quiet ? null : fail(e); }
+  const s = state, g = s.group;
+  if (!wishDraft) wishDraft = [...s.me.wishlist];
+  header(g.name, g);
+  const invite = `${location.origin}/g/${s.inviteCode}`;
+  const keep = [...document.querySelectorAll('[data-send] input')].map(i => i.value);
+  app.innerHTML = `
+  ${s.giftee ? `<section class="card hero">
+      <p style="margin:0">Hola ${esc(s.me.name)}, te tocó regalarle a</p>
+      <div class="name">${esc(s.giftee.name)}</div>
+      <p style="margin:0 0 4px">Presupuesto: <b>${esc(money(g))}</b>. ¡Que no se entere!</p>
+      <h3 style="margin-top:14px">Su lista de deseos</h3>${wishList(s.giftee.wishlist)}
+    </section>
+    <section class="card"><h2>Escríbele a ${esc(s.giftee.name)} sin que sepa quién eres</h2>
+      <p class="muted">Le llega por WhatsApp desde el número de la app. Pregúntale tallas, gustos, lo que quieras.</p>
+      ${chat(s.threads.toGiftee, 'Aún no hay mensajes.')}${sendForm('giftee', 'Mensaje anónimo…')}</section>`
+  : `<section class="card"><h2>Hola ${esc(s.me.name)} 👋</h2><p>El sorteo aún no se ha hecho. Cuando el organizador lo lance te avisaremos por WhatsApp.</p>
+      <h3>Invita al grupo</h3>${copyBox(invite)}
+      <div class="actions"><a href="${waShare(invite, `¡Únete a nuestro amigo invisible "${g.name}"!`)}" target="_blank" rel="noopener"><button class="sm" type="button">Compartir por WhatsApp</button></a></div></section>`}
+  ${g.drawn ? `<section class="card"><h2>Tu amigo invisible</h2><p class="muted">Lo que te escriba llega aquí y a tu WhatsApp. Puedes responderle sin saber quién es.</p>
+      ${chat(s.threads.fromSanta, 'Todavía no te ha escrito.')}${sendForm('santa', 'Responder a tu amigo invisible…')}</section>` : ''}
+  <section class="card"><h2>Mi lista de deseos</h2>${wishList(wishDraft, true)}
+    <form id="wf"><div class="row"><div><label for="wt">Idea</label><input id="wt" maxlength="200" placeholder="Auriculares inalámbricos"></div>
+    <div><label for="wl">Enlace (opcional)</label><input id="wl" type="url" placeholder="https://…"></div></div>
+    <div class="actions"><button class="sm ghost">Añadir</button><button class="sm" type="button" id="ws">Guardar lista</button></div><div class="err" id="we"></div></form></section>
+  <section class="card"><h2>Grupo (${s.members.length})</h2>
+    ${s.members.map(m => `<details><summary>${esc(m.name)}${m.me ? ' (tú)' : ''} · ${m.wishlist.length} deseos</summary>${wishList(m.wishlist)}</details>`).join('')}</section>`;
+  document.querySelectorAll('[data-send] input').forEach((i, k) => { i.value = keep[k] || ''; });
+  bindParticipant(token);
+}
+function bindParticipant(token) {
+  const redraw = () => participant(token, true);
+  document.querySelectorAll('[data-send]').forEach(f => f.onsubmit = async e => {
+    e.preventDefault(); const inp = f.querySelector('input'), btn = f.querySelector('button'); btn.disabled = true;
+    try { const r = await api(`/api/me/${token}/messages`, { method:'POST', body: { to: f.dataset.send, body: inp.value } }); inp.value = ''; await redraw(); if (r.warning) $(`#er-${f.dataset.send}`).textContent = r.warning; }
+    catch (err) { $(`#er-${f.dataset.send}`).textContent = err.message; btn.disabled = false; }
+  });
+  $('#wf').onsubmit = e => { e.preventDefault(); const t = $('#wt').value.trim(); if (!t) return; wishDraft.push({ text: t, link: $('#wl').value.trim() }); save(); };
+  document.querySelectorAll('[data-del]').forEach(b => b.onclick = () => { wishDraft.splice(+b.dataset.del, 1); save(); });
+  $('#ws').onclick = save;
+  async function save() {
+    try { const r = await api(`/api/me/${token}/wishlist`, { method:'PUT', body: { items: wishDraft } }); wishDraft = r.items; await redraw(); $('#we').textContent = ''; }
+    catch (err) { $('#we').textContent = err.message; }
+  }
+}
+
+// ---------- Organizador ----------
+async function admin(at) {
+  let a; try { a = await api(`/api/admin/${at}`); } catch (e) { return fail(e); }
+  const myToken = new URLSearchParams(location.search).get('p');
+  header(a.name, a);
+  const invite = `${location.origin}/g/${a.inviteCode}`;
+  const nameOf = id => a.people.find(p => p.id === id)?.name || '?';
+  app.innerHTML = `
+  <section class="card"><h2>Panel del organizador</h2>
+    <p class="muted">Guarda este enlace: es tu acceso para lanzar el sorteo. Aquí nunca se ve quién le regala a quién.</p>
+    ${myToken ? `<div class="actions"><a href="/p/${esc(myToken)}"><button type="button" class="sm">Ir a mi página de participante</button></a></div>` : ''}
+    <h3 style="margin-top:16px">Enlace de invitación</h3>${copyBox(invite)}
+    <div class="actions"><a href="${waShare(invite, `¡Únete a nuestro amigo invisible "${a.name}"!`)}" target="_blank" rel="noopener"><button type="button" class="sm">Compartir por WhatsApp</button></a></div>
+    ${a.provider === 'console' ? '<p class="err">Modo prueba: los WhatsApp solo se escriben en el log del servidor.</p>' : ''}</section>
+  <section class="card"><h2>Participantes (${a.people.length})</h2>
+    <ul class="people">${a.people.map(p => `<li><span><b>${esc(p.name)}</b><br><span class="muted">${esc(p.phone)} · ${p.wishes} deseos</span></span>${a.drawn ? '' : `<button class="sm ghost" data-rm="${p.id}">Quitar</button>`}</li>`).join('')}</ul>
+    <h3 style="margin-top:16px">No pueden tocarse entre sí</h3><p class="muted">Útil para parejas.</p>
+    <ul class="people">${a.exclusions.map(x => `<li><span>${esc(nameOf(x.a))} ↔ ${esc(nameOf(x.b))}</span><button class="sm ghost" data-unx="${x.a}-${x.b}">Quitar</button></li>`).join('') || ''}</ul>
+    <div class="row"><select id="xa">${a.people.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select>
+    <select id="xb">${a.people.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select></div>
+    <div class="actions"><button class="sm ghost" id="xadd">Añadir exclusión</button></div></section>
+  <section class="card"><h2>Sorteo</h2>
+    ${a.drawn ? `<p>Hecho. Cada persona recibió su enlace por WhatsApp.</p>
+      <div class="actions"><button class="sm ghost" id="resend">Reenviar enlaces</button><button class="sm red" id="reset">Reiniciar sorteo</button></div>`
+    : `<p>Cuando estén todos, lánzalo. Cada uno recibirá por WhatsApp su enlace para ver a quién le tocó.</p>
+      <div class="actions"><button class="red" id="draw" ${a.people.length < 3 ? 'disabled' : ''}>Hacer el sorteo</button></div>
+      ${a.people.length < 3 ? '<p class="muted">Faltan personas: mínimo 3.</p>' : ''}`}
+    <div class="err" id="de"></div></section>
+  <form class="card" id="gf"><h2>Ajustes</h2>
+    <label for="gn">Nombre</label><input id="gn" value="${esc(a.name)}" maxlength="80">
+    <div class="row"><div><label for="bu">Presupuesto</label><input id="bu" type="number" min="0" value="${esc(a.budget ?? '')}"></div>
+    <div><label for="cu">Moneda</label><select id="cu">${['EUR','COP','USD'].map(c => `<option ${c === a.currency ? 'selected' : ''}>${c}</option>`).join('')}</select></div>
+    <div><label for="dt">Fecha</label><input id="dt" type="date" value="${esc(a.date ?? '')}"></div></div>
+    <div class="actions"><button class="sm">Guardar</button></div></form>`;
+  const run = async (fn, msg) => { if (msg && !confirm(msg)) return; try { const r = await fn(); await admin(at); if (r?.failed) $('#de').textContent = `${r.failed} WhatsApp no se pudieron enviar`; } catch (e) { $('#de').textContent = e.message; } };
+  const base = `/api/admin/${at}`;
+  document.querySelectorAll('[data-rm]').forEach(b => b.onclick = () => run(() => api(`${base}/participants/${b.dataset.rm}`, { method:'DELETE' }), '¿Quitar a esta persona?'));
+  document.querySelectorAll('[data-unx]').forEach(b => b.onclick = () => { const [x, y] = b.dataset.unx.split('-'); run(() => api(`${base}/exclusions`, { method:'POST', body: { a: x, b: y, remove: true } })); });
+  $('#xadd').onclick = () => run(() => api(`${base}/exclusions`, { method:'POST', body: { a: $('#xa').value, b: $('#xb').value } }));
+  $('#draw') && ($('#draw').onclick = () => run(() => api(`${base}/draw`, { method:'POST' }), '¿Hacer el sorteo ahora? Se avisará a todos por WhatsApp.'));
+  $('#reset') && ($('#reset').onclick = () => run(() => api(`${base}/reset`, { method:'POST' }), 'Se borrará el sorteo y los mensajes. ¿Seguro?'));
+  $('#resend') && ($('#resend').onclick = () => run(() => api(`${base}/resend`, { method:'POST' })));
+  $('#gf').onsubmit = e => { e.preventDefault(); run(() => api(base, { method:'PUT', body: { name: $('#gn').value, budget: $('#bu').value, currency: $('#cu').value, date: $('#dt').value } })); };
+}
+
+function fail(e) { header('Ups'); app.innerHTML = `<div class="card"><p>${esc(e.message)}</p><a href="/"><button class="sm">Ir al inicio</button></a></div>`; }
+
+const [, kind, id] = location.pathname.split('/');
+if (kind === 'g') join(id);
+else if (kind === 'p') { participant(id); setInterval(() => { if (!document.activeElement?.matches('input,textarea')) participant(id, true); }, 20000); }
+else if (kind === 'admin') admin(id);
+else home();
+}
+</script>
+</body>
+</html>
