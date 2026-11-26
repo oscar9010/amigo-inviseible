@@ -104,6 +104,7 @@
         <p class="hint" id="vInfo"></p>
       </div>
     </div>
+    <div id="install"></div>
     <div id="alerts"></div>
     <div id="wishes"></div>
     <div id="chats"></div>
@@ -199,6 +200,10 @@ const FIREBASE_CONFIG = {
 // Clave pública VAPID de Firebase (Configuración del proyecto > Cloud Messaging > Certificados push web). No es secreta.
 const VAPID_KEY = 'BHulh2jBH4Rxk1JU-zmtIQG28KD4KlaNfXuBUxZF0QAw3Vf5kSKlBV32jsdyp07tbBhrXXDdpIMSacz_9fph3Lw';
 
+// Android/Chrome avisa cuando la página se puede instalar; se guarda el evento para ofrecer un botón de un toque
+let deferredInstall = null;
+addEventListener('beforeinstallprompt', e => { e.preventDefault(); deferredInstall = e; dispatchEvent(new Event('install-ready')); });
+
 let fbPromise;
 function fb() {
   return fbPromise ??= (async () => {
@@ -256,6 +261,39 @@ function personalManifest(token) {
   } catch {}
 }
 
+function startInstall() {
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  let dismissed = false;
+  try { dismissed = !!localStorage.getItem('amigo-noinstall'); } catch {}
+  if (standalone || dismissed) return;
+  const ua = navigator.userAgent;
+  const ios = /iphone|ipad|ipod/i.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const card = el('div', { className: 'card' });
+  const later = el('button', { className: 'sec full', textContent: 'Ahora no' });
+  later.onclick = () => { card.remove(); try { localStorage.setItem('amigo-noinstall', '1'); } catch {} };
+  const show = (...kids) => { card.append(el('b', { textContent: '📲 Guarda la app en tu móvil' }), ...kids, later); $('install').append(card); };
+  const hint = t => el('p', { className: 'hint', textContent: t });
+  if (ios) {
+    const safari = /safari/i.test(ua) && !/(fbav|fban|instagram|line|gsa)/i.test(ua);
+    if (!safari) return show(hint('Abre este enlace en Safari para poder guardarla: toca ⋯ (o el icono de la brújula) y elige "Abrir en Safari".'));
+    return show(hint('Así la abres con un toque y te llegan los avisos de mensajes:'),
+      el('p', { textContent: '1️⃣ Toca el botón Compartir ⬆️ de Safari' }),
+      el('p', { textContent: '2️⃣ Elige "Añadir a pantalla de inicio"' }),
+      el('p', { textContent: '3️⃣ Abre la app desde su icono 🎁' }));
+  }
+  const offer = () => {
+    const btn = el('button', { className: 'full', textContent: '📲 Instalar app' });
+    btn.onclick = async () => {
+      const ev = deferredInstall; if (!ev) return;
+      ev.prompt(); const r = await ev.userChoice; deferredInstall = null;
+      if (r.outcome === 'accepted') card.remove();
+    };
+    show(hint('Instálala con un toque y ábrela desde su icono. Así te llegan los avisos de mensajes.'), btn);
+  };
+  addEventListener('appinstalled', () => card.remove());
+  if (deferredInstall) offer(); else addEventListener('install-ready', offer, { once: true });
+}
+
 async function startAlerts(d) {
   if (!VAPID_KEY) return;
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
@@ -310,7 +348,7 @@ async function openLink(h) {
       const d = snap.data();
       $('vGroup').textContent = d.g || 'Amigo invisible';
       $('vFrom').textContent = d.f;
-      startAlerts(d); startWishlists(d); startChat(d);
+      startInstall(); startAlerts(d); startWishlists(d); startChat(d);
       $('reveal').onclick = () => {
         $('vTo').textContent = d.t;
         $('vInfo').textContent = [d.b && 'Presupuesto: ' + d.b, d.d && 'Fecha: ' + d.d].filter(Boolean).join(' · ');
