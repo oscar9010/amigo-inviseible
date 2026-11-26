@@ -117,7 +117,14 @@ if (location.hash.length > 1) {
 
 // ---- chat en tiempo real (Firebase Firestore) ----
 // Pega aquí la configuración de tu app web de Firebase. Ver SETUP-CHAT.md
-const FIREBASE_CONFIG = null;
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyD0Dch5D-QVye33lj5NcdQ19aGGuhPEVAo",
+  authDomain: "amigo-invisible-c1e5a.firebaseapp.com",
+  projectId: "amigo-invisible-c1e5a",
+  storageBucket: "amigo-invisible-c1e5a.firebasestorage.app",
+  messagingSenderId: "226478486459",
+  appId: "1:226478486459:web:c8627858a8ab8f77eb8a9e"
+};
 
 async function startChat(d) {
   const box = $('chats');
