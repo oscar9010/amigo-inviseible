@@ -4,7 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0b3b2e">
-<link rel="manifest" href="manifest.json">
+<script>
+// El manifiesto personal se elige antes de que el navegador lo lea, para que al instalar el icono abra el perfil de esa persona
+(function () {
+  var m = location.hash.match(/^#t=([\w-]{10,60})$/) || location.search.match(/[?&]t=([\w-]{10,60})/);
+  var l = document.createElement('link'); l.rel = 'manifest';
+  l.href = m ? 'https://us-central1-amigo-invisible-c1e5a.cloudfunctions.net/manifiesto?u=' + encodeURIComponent(location.href.split('#')[0].split('?')[0]) + '&t=' + m[1] : 'manifest.json';
+  document.head.appendChild(l);
+})();
+</script>
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
@@ -104,22 +112,27 @@
         <p class="hint" id="vInfo"></p>
       </div>
     </div>
-    <div id="install"></div>
     <div id="alerts"></div>
     <div id="wishes"></div>
     <div id="chats"></div>
+    <div id="install"></div>
+    <p class="foot"><a href="?org=1" style="color:#9fd4bd">Soy el organizador del grupo</a></p>
   </section>
 
   <!-- Vista del organizador -->
-  <section id="admin">
-    <div class="card hide" id="pasteCard">
-      <b>🎁 ¿Ya tienes tu enlace?</b>
-      <p class="hint">Si te llegó un enlace por WhatsApp, pégalo aquí para entrar a tu amigo invisible.</p>
+  <section id="paste" class="hide">
+    <p class="sub">Entra con el enlace que te llegó por WhatsApp.</p>
+    <div class="card">
+      <b>🎁 Pega tu enlace</b>
+      <p class="hint">Copia el mensaje o el enlace del WhatsApp y pégalo aquí.</p>
       <input id="pasteLink" placeholder="Pega aquí tu enlace" autocomplete="off">
       <button class="full" id="pasteGo">Entrar</button>
       <p class="hint" id="pasteMsg"></p>
-      <p class="hint">Si en cambio vas a organizar un grupo, ignora esto y usa el formulario de abajo.</p>
     </div>
+    <p class="foot"><a href="?org=1" style="color:#9fd4bd">Soy el organizador del grupo</a></p>
+  </section>
+
+  <section id="admin">
     <p class="sub">Crea el grupo, haz el sorteo y envía a cada persona su enlace secreto por WhatsApp. 🎄</p>
 
     <div class="card">
@@ -253,14 +266,6 @@ function normPhone(raw) {
 }
 
 // ---- modo participante ----
-// Al instalarla en la pantalla de inicio, la app se abre directamente en el enlace de esta persona
-function personalManifest(token) {
-  try {
-    const u = encodeURIComponent(location.href.split('#')[0].split('?')[0]);
-    document.querySelector('link[rel=manifest]').href = `https://us-central1-${FIREBASE_CONFIG.projectId}.cloudfunctions.net/manifiesto?u=${u}&t=${encodeURIComponent(token)}`;
-  } catch {}
-}
-
 function startInstall() {
   const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
   let dismissed = false;
@@ -271,7 +276,8 @@ function startInstall() {
   const card = el('div', { className: 'card' });
   const later = el('button', { className: 'sec full', textContent: 'Ahora no' });
   later.onclick = () => { card.remove(); try { localStorage.setItem('amigo-noinstall', '1'); } catch {} };
-  const show = (...kids) => { card.append(el('b', { textContent: '📲 Guarda la app en tu móvil' }), ...kids, later); $('install').append(card); };
+  let title = '📲 Guarda la app en tu móvil';
+  const show = (...kids) => { card.append(el('b', { textContent: title }), ...kids, later); $('install').append(card); };
   const hint = t => el('p', { className: 'hint', textContent: t });
   if (ios) {
     const safari = /safari/i.test(ua) && !/(fbav|fban|instagram|line|gsa)/i.test(ua);
@@ -288,7 +294,8 @@ function startInstall() {
       ev.prompt(); const r = await ev.userChoice; deferredInstall = null;
       if (r.outcome === 'accepted') card.remove();
     };
-    show(hint('Instálala con un toque y ábrela desde su icono. Así te llegan los avisos de mensajes.'), btn);
+    title = '📲 Acceso directo (opcional)';
+    show(hint('Añádela a tu pantalla de inicio para abrirla con un toque. Los avisos funcionan igual sin instalarla.'), btn);
   };
   addEventListener('appinstalled', () => card.remove());
   if (deferredInstall) offer(); else addEventListener('install-ready', offer, { once: true });
@@ -298,6 +305,7 @@ async function startAlerts(d) {
   if (!VAPID_KEY) return;
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
   const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+  if (ios && !standalone) return; // en iPhone primero hay que guardar la app: la tarjeta de instalación lo explica
   const btn = el('button', { className: 'full', textContent: '🔔 Activar avisos' }), status = el('p', { className: 'hint' });
   $('alerts').append(el('div', { className: 'card' }, el('b', { textContent: '🔔 Avisos de mensajes' }),
     el('p', { className: 'hint', textContent: 'Recibe una notificación en el móvil cuando tu amigo invisible te escriba, aunque tengas la app cerrada.' }), btn, status));
@@ -334,7 +342,7 @@ async function startAlerts(d) {
 }
 
 async function openLink(h) {
-  if (h.startsWith('t=')) { personalManifest(h.slice(2)); try { localStorage.setItem('amigo-token', h.slice(2)); } catch {} }
+  if (h.startsWith('t=')) { try { localStorage.setItem('amigo-token', h.slice(2)); } catch {} }
   $('admin').classList.add('hide'); $('view').classList.remove('hide');
   const fail = m => { $('vCard').classList.add('hide'); $('vBad').textContent = m; $('vBad').classList.remove('hide'); };
   if (!h.startsWith('t=')) return fail('Este enlace es antiguo y ya no es válido. Pídele al organizador uno nuevo.');
@@ -358,13 +366,19 @@ async function openLink(h) {
   } catch { fail('No se pudo cargar el enlace. Revisa tu conexión e inténtalo de nuevo.'); }
 }
 const standaloneApp = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+const queryToken = (location.search.match(/[?&]t=([\w-]{10,60})/) || [])[1];
 if (location.hash.length > 1) openLink(location.hash.slice(1));
+else if (queryToken) openLink('t=' + queryToken);
 else if (standaloneApp) {
   // Abierta desde el icono sin enlace: recupera el enlace guardado o pídelo, para no mostrar el panel de organizador por error
   let saved = null, hasOrg = false;
   try { saved = localStorage.getItem('amigo-token'); hasOrg = !!JSON.parse(localStorage.getItem('amigo-org') || 'null')?.people?.length; } catch {}
-  if (saved && !hasOrg) { location.replace(location.href.split('#')[0] + '#t=' + saved); }
-  else if (!hasOrg) $('pasteCard').classList.remove('hide');
+  const wantOrg = new URLSearchParams(location.search).has('org');
+  if (saved && !wantOrg) {
+    history.replaceState(null, '', location.href.split('#')[0].split('?')[0] + '#t=' + saved);
+    openLink('t=' + saved);
+  }
+  else if (!wantOrg && !hasOrg) { $('admin').classList.add('hide'); $('paste').classList.remove('hide'); }
 }
 
 // ---- chat en tiempo real (Firebase Firestore) ----
@@ -523,7 +537,7 @@ function showLinks() {
   const base = location.href.split('#')[0], { order, toks, meta } = draw;
   $('links').replaceChildren(...order.map((p, i) => {
     const url = base + '#t=' + toks[i];
-    const text = `🎁 Hola ${p.name}! Tu amigo invisible${meta.g ? ' de ' + meta.g : ''} está listo. Mira a quién te tocó (es secreto): ${url}\n\n🔔 Para recibir avisos de mensajes: en Android ábrelo en Chrome y pulsa "Activar avisos". En iPhone ábrelo en Safari, toca Compartir > "Añadir a pantalla de inicio" y ábrelo desde ese icono.`;
+    const text = `🎁 Hola ${p.name}! Tu amigo invisible${meta.g ? ' de ' + meta.g : ''} está listo. Mira a quién te tocó (es secreto): ${url}\n\n🔔 Ábrelo en Chrome (Android) o Safari (iPhone) y sigue los pasos para recibir avisos.`;
     const li = document.createElement('li');
     const n = document.createElement('span'); n.className = 'n'; n.textContent = p.name;
     li.append(n);
