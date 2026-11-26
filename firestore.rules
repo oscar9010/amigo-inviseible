@@ -30,6 +30,16 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Dispositivos suscritos a avisos push. Nadie puede leerlos (solo la función de servidor).
+    match /chats/{chatId}/subs/{sid} {
+      allow read, delete: if false;
+      allow create, update: if request.resource.data.keys().hasOnly(['role', 'token', 'url', 'at'])
+                            && request.resource.data.role in ['s', 'g']
+                            && request.resource.data.token is string && request.resource.data.token.size() <= 400
+                            && request.resource.data.url is string && request.resource.data.url.size() <= 500
+                            && request.resource.data.at == request.time;
+    }
+
     match /wishlists/{wid} {
       allow get: if true;
       allow list: if false;
