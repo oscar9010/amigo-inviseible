@@ -39,7 +39,8 @@
   <!-- Vista del participante -->
   <section id="view" class="hide">
     <p class="sub" id="vGroup"></p>
-    <div class="card">
+    <p id="vBad" class="card hide"></p>
+    <div class="card" id="vCard">
       <p>Hola <b id="vFrom"></b>, tu amigo invisible es un secreto. Asegúrate de que nadie mira tu pantalla.</p>
       <button class="full" id="reveal">Ver a quién me tocó</button>
       <div id="result" class="hide">
@@ -82,6 +83,11 @@
       <b>Enlaces secretos</b>
       <p class="hint">Envía cada enlace solo a su dueño. Cuando termines, cierra esta pestaña para no ver los resultados.</p>
       <ul id="links"></ul>
+      <div class="row" style="margin-top:12px">
+        <button class="sec" id="regen">Regenerar enlaces</button>
+        <button class="sec" id="revoke">Revocar todos</button>
+      </div>
+      <p class="hint">Revocar o regenerar deja sin efecto los enlaces anteriores al instante, incluso si ya están abiertos.</p>
     </div>
   </section>
 </main>
@@ -105,15 +111,26 @@ function fb() {
   return fbPromise ??= (async () => {
     const U = 'https://www.gstatic.com/firebasejs/10.12.2/';
     const [{ initializeApp }, fs] = await Promise.all([import(U + 'firebase-app.js'), import(U + 'firebase-firestore.js')]);
-    return { fs, db: fs.getFirestore(initializeApp(FIREBASE_CONFIG)) };
+    const app = initializeApp(FIREBASE_CONFIG);
+    return { fs, app, db: fs.getFirestore(app) };
+  })();
+}
+// Identidad anónima del organizador: solo ella puede borrar (revocar) los enlaces que creó
+let userPromise;
+function getUser() {
+  return userPromise ??= (async () => {
+    const { app } = await fb();
+    const au = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+    const auth = au.getAuth(app);
+    await auth.authStateReady();
+    return auth.currentUser || (await au.signInAnonymously(auth)).user;
   })();
 }
 const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
 const safeLink = l => /^https?:\/\//i.test(l) ? l : '';
 
-// ---- codificación del enlace (en el fragmento #, nunca llega a ningún servidor) ----
-const enc = o => btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
-const dec = s => JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')), c => c.charCodeAt(0))));
+// id aleatorio imposible de adivinar (base64url)
+const rb = n => btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(n)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 
 function normPhone(raw) {
   let s = String(raw || '').replace(/[^\d+]/g, '');
@@ -124,20 +141,30 @@ function normPhone(raw) {
 }
 
 // ---- modo participante ----
-if (location.hash.length > 1) {
+async function openLink(h) {
+  $('admin').classList.add('hide'); $('view').classList.remove('hide');
+  const fail = m => { $('vCard').classList.add('hide'); $('vBad').textContent = m; $('vBad').classList.remove('hide'); };
+  if (!h.startsWith('t=')) return fail('Este enlace es antiguo y ya no es válido. Pídele al organizador uno nuevo.');
   try {
-    const d = dec(location.hash.slice(1));
-    $('admin').classList.add('hide'); $('view').classList.remove('hide');
-    $('vGroup').textContent = d.g || 'Amigo invisible';
-    $('vFrom').textContent = d.f;
-    startWishlists(d); startChat(d);
-    $('reveal').onclick = () => {
-      $('vTo').textContent = d.t;
-      $('vInfo').textContent = [d.b && 'Presupuesto: ' + d.b, d.d && 'Fecha: ' + d.d].filter(Boolean).join(' · ');
-      $('result').classList.remove('hide'); $('reveal').classList.add('hide');
-    };
-  } catch { $('msg').textContent = 'Enlace no válido.'; }
+    const { fs, db } = await fb();
+    let started = false;
+    fs.onSnapshot(fs.doc(db, 'links', h.slice(2)), snap => {
+      if (!snap.exists()) return started ? location.reload() : fail('Este enlace ya no es válido o fue revocado. Pídele al organizador uno nuevo.');
+      if (started) return;
+      started = true;
+      const d = snap.data();
+      $('vGroup').textContent = d.g || 'Amigo invisible';
+      $('vFrom').textContent = d.f;
+      startWishlists(d); startChat(d);
+      $('reveal').onclick = () => {
+        $('vTo').textContent = d.t;
+        $('vInfo').textContent = [d.b && 'Presupuesto: ' + d.b, d.d && 'Fecha: ' + d.d].filter(Boolean).join(' · ');
+        $('result').classList.remove('hide'); $('reveal').classList.add('hide');
+      };
+    }, () => fail('No se pudo cargar el enlace. Revisa tu conexión e inténtalo de nuevo.'));
+  } catch { fail('No se pudo cargar el enlace. Revisa tu conexión e inténtalo de nuevo.'); }
 }
+if (location.hash.length > 1) openLink(location.hash.slice(1));
 
 // ---- chat en tiempo real (Firebase Firestore) ----
 async function startWishlists(d) {
@@ -255,13 +282,43 @@ $('add').onclick = () => {
 };
 $('pName').addEventListener('keydown', e => e.key === 'Enter' && $('add').click());
 
-const rid = () => enc(Array.from(crypto.getRandomValues(new Uint8Array(12))));
+const WARN = 'Se hicieron los enlaces nuevos, pero no se pudieron revocar los anteriores (¿usas otro navegador del que hizo el sorteo?).';
+function fbErr(e) {
+  const c = e?.code || '';
+  if (/operation-not-allowed|admin-restricted|configuration-not-found/.test(c)) return 'Activa la autenticación anónima en Firebase (Authentication > Método de acceso > Anónimo).';
+  if (/permission/.test(c)) return 'Firebase rechazó la operación: comprueba que publicaste las reglas nuevas.';
+  return 'Error de conexión con Firebase. Inténtalo de nuevo.';
+}
+async function busy(fn) {
+  $('msg').textContent = 'Un momento…';
+  try { $('msg').textContent = (await fn()) || ''; } catch (e) { $('msg').textContent = fbErr(e); }
+}
+// Guarda en Firebase la asignación de cada persona; el enlace solo lleva un código (la asignación nunca va en el enlace)
+async function publish(order, meta) {
+  const { fs, db } = await fb(), user = await getUser(), n = order.length;
+  const toks = order.map(() => rb(16)), chat = order.map(() => rb(12)), wish = order.map(() => rb(12));
+  const batch = fs.writeBatch(db);
+  order.forEach((p, i) => batch.set(fs.doc(db, 'links', toks[i]), {
+    owner: user.uid, f: p.name, t: order[(i + 1) % n].name, g: meta.g, b: meta.b, d: meta.d,
+    c1: chat[i], c2: chat[(i + n - 1) % n], w: wish[i], w2: wish[(i + 1) % n],
+  }));
+  await batch.commit();
+  return toks;
+}
+async function revoke(toks) {
+  if (!toks?.length) return;
+  const { fs, db } = await fb(); await getUser();
+  const batch = fs.writeBatch(db);
+  toks.forEach(t => batch.delete(fs.doc(db, 'links', t)));
+  await batch.commit();
+}
+const revokeQuiet = toks => revoke(toks).then(() => '', () => WARN);
+
 function showLinks() {
-  if (!draw) return $('results').classList.add('hide');
-  if (!draw.wids) { draw.wids = draw.order.map(rid); save(); }
-  const base = location.href.split('#')[0], { order, chatIds, wids, meta } = draw, len = order.length;
+  if (!draw?.toks) return $('results').classList.add('hide');
+  const base = location.href.split('#')[0], { order, toks, meta } = draw;
   $('links').replaceChildren(...order.map((p, i) => {
-    const url = base + '#' + enc({ ...meta, f: p.name, t: order[(i + 1) % len].name, c1: chatIds[i], c2: chatIds[(i + len - 1) % len], w: wids[i], w2: wids[(i + 1) % len] });
+    const url = base + '#t=' + toks[i];
     const text = `🎁 Hola ${p.name}! Tu amigo invisible${meta.g ? ' de ' + meta.g : ''} está listo. Mira a quién te tocó (es secreto): ${url}`;
     const li = document.createElement('li');
     const n = document.createElement('span'); n.className = 'n'; n.textContent = p.name;
@@ -280,21 +337,45 @@ function showLinks() {
 
 $('draw').onclick = () => {
   if (people.length < 3) return $('msg').textContent = 'Se necesitan al menos 3 personas.';
-  if (draw && !confirm('Ya hay un sorteo hecho. Repetirlo invalida los enlaces que ya enviaste. ¿Continuar?')) return;
-  const order = [...people];
-  for (let i = order.length - 1; i > 0; i--) {
-    const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
-    [order[i], order[j]] = [order[j], order[i]];
-  }
-  draw = { order, chatIds: order.map(rid), wids: order.map(rid), meta: { g: $('gName').value.trim(), b: $('gBudget').value.trim(), d: $('gDate').value } };
-  save(); showLinks(); $('msg').textContent = '';
-  $('results').scrollIntoView({ behavior: 'smooth' });
+  if (draw && !confirm('Ya hay un sorteo hecho. Se revocarán los enlaces anteriores y se hará un sorteo nuevo. ¿Continuar?')) return;
+  busy(async () => {
+    const order = [...people];
+    for (let i = order.length - 1; i > 0; i--) {
+      const j = crypto.getRandomValues(new Uint32Array(1))[0] % (i + 1);
+      [order[i], order[j]] = [order[j], order[i]];
+    }
+    const meta = { g: $('gName').value.trim(), b: $('gBudget').value.trim(), d: $('gDate').value };
+    const old = draw?.toks;
+    draw = { order, meta, toks: await publish(order, meta) };
+    save(); showLinks();
+    $('results').scrollIntoView({ behavior: 'smooth' });
+    return revokeQuiet(old);
+  });
+};
+
+$('regen').onclick = () => {
+  if (!draw || !confirm('Se revocarán los enlaces actuales y se crearán otros nuevos con el mismo sorteo. Los chats y las listas de deseos empiezan de cero. ¿Continuar?')) return;
+  busy(async () => {
+    const old = draw.toks;
+    draw.toks = await publish(draw.order, draw.meta);
+    save(); showLinks();
+    return revokeQuiet(old);
+  });
+};
+
+$('revoke').onclick = () => {
+  if (!draw || !confirm('Todos los enlaces dejarán de funcionar al instante. ¿Seguro?')) return;
+  busy(async () => { await revoke(draw.toks); draw = null; save(); showLinks(); return 'Enlaces revocados.'; });
 };
 
 $('reset').onclick = () => {
-  if (!confirm('Se borrarán participantes y sorteo de este navegador. ¿Seguro?')) return;
-  people.length = 0; draw = null; ['gName', 'gBudget', 'gDate'].forEach(i => $(i).value = '');
-  render(); showLinks();
+  if (!confirm('Se borrarán participantes y sorteo, y se revocarán los enlaces. ¿Seguro?')) return;
+  busy(async () => {
+    const warn = await revokeQuiet(draw?.toks);
+    people.length = 0; draw = null; ['gName', 'gBudget', 'gDate'].forEach(i => $(i).value = '');
+    render(); showLinks();
+    return warn;
+  });
 };
 
 if (location.hash.length <= 1) {
@@ -304,6 +385,11 @@ if (location.hash.length <= 1) {
   } catch {}
   render(); showLinks();
   ['gName', 'gBudget', 'gDate'].forEach(i => $(i).addEventListener('input', save));
+  // Sorteo guardado con el formato antiguo (asignación dentro del enlace): se pasa al nuevo y los enlaces antiguos dejan de valer
+  if (draw && !draw.toks) busy(async () => {
+    draw.toks = await publish(draw.order, draw.meta); save(); showLinks();
+    return 'Enlaces actualizados. Los anteriores ya no funcionan: reenvía los nuevos.';
+  });
 }
 </script>
 </body>

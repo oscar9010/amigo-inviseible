@@ -1,7 +1,24 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Los ids de chat y de lista son secretos e imposibles de adivinar; no se pueden listar las colecciones.
+    // Todos los ids (enlaces, chats, listas) son secretos e imposibles de adivinar; no se pueden listar las colecciones.
+
+    // Asignación de cada participante. Solo quien la creó (el organizador, con su sesión anónima) puede borrarla = revocar el enlace.
+    match /links/{tok} {
+      allow get: if true;
+      allow list: if false;
+      allow create: if request.auth != null
+                    && request.resource.data.owner == request.auth.uid
+                    && request.resource.data.keys().hasOnly(['owner', 'f', 't', 'g', 'b', 'd', 'c1', 'c2', 'w', 'w2'])
+                    && request.resource.data.f is string && request.resource.data.f.size() <= 60
+                    && request.resource.data.t is string && request.resource.data.t.size() <= 60
+                    && request.resource.data.g is string && request.resource.data.g.size() <= 80
+                    && request.resource.data.b is string && request.resource.data.b.size() <= 20
+                    && request.resource.data.d is string && request.resource.data.d.size() <= 10;
+      allow update: if false;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.owner;
+    }
+
     match /chats/{chatId}/messages/{msgId} {
       allow read: if true;
       allow create: if request.resource.data.keys().hasOnly(['r', 't', 'at'])
