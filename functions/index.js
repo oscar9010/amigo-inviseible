@@ -3,7 +3,33 @@ const { initializeApp } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
 
+const { onRequest } = require('firebase-functions/v2/https');
+
 initializeApp();
+
+// Manifiesto personal: al instalar la app en la pantalla de inicio, se abre directamente en el enlace de cada participante
+exports.manifiesto = onRequest({ region: process.env.FN_REGION || 'us-central1', cors: true, maxInstances: 5 }, (req, res) => {
+  const t = String(req.query.t || '');
+  let page;
+  try { page = new URL(String(req.query.u || '')); } catch { return res.status(400).send('bad request'); }
+  const allowed = page.origin === 'https://oscar9010.github.io' || page.hostname === 'localhost';
+  if (!allowed || !/^[\w-]{10,60}$/.test(t)) return res.status(400).send('bad request');
+  const dir = page.origin + page.pathname.replace(/[^/]*$/, '');
+  res.set('Cache-Control', 'public, max-age=300').type('application/manifest+json').send(JSON.stringify({
+    id: `${dir}?i=${t}`,
+    name: 'Amigo Invisible',
+    short_name: 'Amigo',
+    start_url: `${page.origin}${page.pathname}#t=${t}`,
+    scope: dir,
+    display: 'standalone',
+    background_color: '#0b3b2e',
+    theme_color: '#0b3b2e',
+    icons: [
+      { src: dir + 'icon-192.png', sizes: '192x192', type: 'image/png' },
+      { src: dir + 'icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+  }));
+});
 
 // Al llegar un mensaje al chat, avisa por push a los dispositivos de la otra persona (r: 's' = quien regala, 'g' = quien recibe)
 exports.avisarMensaje = onDocumentCreated(
