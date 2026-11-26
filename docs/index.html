@@ -127,7 +127,13 @@ function getUser() {
   })();
 }
 const el = (tag, props = {}, ...kids) => { const e = Object.assign(document.createElement(tag), props); e.append(...kids); return e; };
-const safeLink = l => /^https?:\/\//i.test(l) ? l : '';
+// Acepta http(s) y completa "amazon.es/x" con https://; descarta cualquier otro esquema (javascript:, data:…) y texto que no parece un enlace
+const safeLink = raw => {
+  const l = String(raw || '').trim();
+  if (/^https?:\/\/\S+$/i.test(l)) return l;
+  if (/^[a-z][a-z0-9+.-]*:/i.test(l) || /\s/.test(l)) return '';
+  return /^[^\s/]+\.[^\s/]{2,}(\/\S*)?$/.test(l) ? 'https://' + l : '';
+};
 
 // id aleatorio imposible de adivinar (base64url)
 const rb = n => btoa(String.fromCharCode(...crypto.getRandomValues(new Uint8Array(n)))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -189,8 +195,12 @@ async function startWishlists(d) {
   const myRef = fs.doc(db, 'wishlists', d.w);
   save.onclick = async () => {
     const clean = items.map(i => ({ t: i.t.trim().slice(0, 200), l: safeLink(i.l.trim().slice(0, 500)) })).filter(i => i.t);
+    const dropped = items.filter(i => i.t.trim() && i.l.trim()).length - clean.filter(i => i.l).length;
     status.textContent = 'Guardando…';
-    try { await fs.setDoc(myRef, { items: clean, at: fs.serverTimestamp() }); items = clean; paint(); status.textContent = '¡Guardado! Tu amigo invisible ya la puede ver.'; }
+    try {
+      await fs.setDoc(myRef, { items: clean, at: fs.serverTimestamp() }); items = clean; paint();
+      status.textContent = '¡Guardado! Tu amigo invisible ya la puede ver.' + (dropped ? ` ${dropped} enlace(s) no eran válidos y se quitaron.` : '');
+    }
     catch { status.textContent = 'No se pudo guardar. Inténtalo de nuevo.'; }
   };
   const btns = el('div', { className: 'row' }, add, save); btns.style.marginTop = '10px';
