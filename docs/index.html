@@ -2,47 +2,97 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b3b2e">
 <title>Amigo Invisible</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mountains+of+Christmas:wght@700&display=swap">
 <style>
-  :root { --bg:#fff8f1; --card:#fff; --ink:#2b2420; --mut:#7a6d64; --acc:#d9462f; --ok:#1f9d55; --line:#eadfd5; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#1b1715; --card:#26201d; --ink:#f3ebe4; --mut:#a89b91; --line:#3a312c; } }
-  * { box-sizing: border-box; }
-  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.5 system-ui,sans-serif; }
-  main { max-width:560px; margin:0 auto; padding:20px 16px 60px; }
-  h1 { font-size:26px; margin:8px 0 4px; }
-  p.sub { color:var(--mut); margin:0 0 18px; }
-  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:14px; }
-  label { display:block; font-size:13px; color:var(--mut); margin:10px 0 4px; }
-  input { width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:transparent; color:inherit; font:inherit; }
-  .row { display:flex; gap:8px; } .row > * { flex:1; }
-  button, a.btn { display:inline-block; padding:10px 14px; border:0; border-radius:10px; background:var(--acc); color:#fff; font:inherit; font-weight:600; cursor:pointer; text-decoration:none; text-align:center; }
-  button.sec, a.sec { background:transparent; color:var(--ink); border:1px solid var(--line); }
-  button.wa, a.wa { background:var(--ok); }
-  button.full { width:100%; margin-top:12px; }
+  :root { --pine:#0b3b2e; --pine2:#06261d; --red:#c8102e; --red2:#e63950; --gold:#f5c451; --cream:#fffaf0; --ink:#2a1f1a; --mut:#7b6b60; --line:#eadcc8; --ok:#1e8f5a; --ok2:#2bb673; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { background: var(--pine2); }
+  body { margin:0; min-height:100vh; color:var(--ink); font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+         background: radial-gradient(120% 60% at 50% 0%, #14614a 0%, var(--pine) 45%, var(--pine2) 100%) fixed; }
+  #snow { position:fixed; inset:0; width:100%; height:100%; pointer-events:none; z-index:0; }
+  main { position:relative; z-index:1; max-width:560px; margin:0 auto; padding:calc(10px + env(safe-area-inset-top)) 16px calc(48px + env(safe-area-inset-bottom)); }
+
+  .hero { text-align:center; padding:14px 0 6px; }
+  .lights { display:flex; justify-content:center; gap:16px; margin-bottom:8px; }
+  .lights i { width:11px; height:15px; border-radius:50% 50% 50% 50% / 60% 60% 40% 40%; display:block; animation:blink 1.8s ease-in-out infinite; box-shadow:0 0 12px currentColor; background:currentColor; }
+  .lights i:nth-child(4n+1){ color:#ff4d5e; } .lights i:nth-child(4n+2){ color:var(--gold); animation-delay:.3s; }
+  .lights i:nth-child(4n+3){ color:#3ddc97; animation-delay:.6s; } .lights i:nth-child(4n+4){ color:#6ec1ff; animation-delay:.9s; }
+  h1 { font-family:'Mountains of Christmas',Georgia,serif; font-size:clamp(36px,11vw,52px); margin:2px 0; line-height:1.05;
+       background:linear-gradient(180deg,#fff6d1,var(--gold)); -webkit-background-clip:text; background-clip:text; color:transparent; filter:drop-shadow(0 3px 0 rgba(0,0,0,.28)); }
+  p.sub { color:#d6efe3; margin:4px 4px 18px; text-align:center; }
+
+  .card { position:relative; background:var(--cream); border-radius:22px; padding:22px 16px 16px; margin-bottom:16px; box-shadow:0 12px 30px rgba(0,0,0,.30); overflow:hidden; animation:rise .5s both; }
+  .card::before { content:""; position:absolute; left:0; right:0; top:0; height:6px; background:repeating-linear-gradient(135deg,var(--red) 0 10px,#fff 10px 20px); }
+  .card > b { font-size:18px; }
+  label { display:block; font-size:13px; font-weight:600; color:var(--mut); margin:12px 0 5px; }
+  input { width:100%; min-height:48px; padding:12px 14px; border:2px solid var(--line); border-radius:14px; background:#fff; color:var(--ink); font:inherit; font-size:16px; }
+  input:focus { outline:none; border-color:var(--gold); box-shadow:0 0 0 4px rgba(245,196,81,.35); }
+  .row { display:flex; gap:10px; } .row > * { flex:1; min-width:0; }
+
+  button, a.btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:48px; padding:12px 18px; border:0; border-radius:14px; cursor:pointer;
+    background:linear-gradient(180deg,var(--red2),var(--red)); color:#fff; font:inherit; font-weight:700; text-decoration:none; text-align:center;
+    box-shadow:0 4px 0 #8f0b21,0 8px 16px rgba(200,16,46,.3); transition:transform .08s, box-shadow .08s; }
+  button:active, a.btn:active { transform:translateY(3px); box-shadow:0 1px 0 #8f0b21,0 3px 8px rgba(200,16,46,.3); }
+  button.sec, a.sec { background:#fff; color:var(--ink); border:2px solid var(--line); box-shadow:none; }
+  button.sec:active, a.sec:active { transform:translateY(1px); }
+  button.wa, a.wa { background:linear-gradient(180deg,var(--ok2),var(--ok)); box-shadow:0 4px 0 #136b42,0 8px 16px rgba(30,143,90,.3); }
+  button.full { width:100%; margin-top:14px; }
+  button.full#draw, button.full#reveal { min-height:54px; font-size:18px; }
+  .x { min-width:40px; min-height:40px; padding:0; background:none; box-shadow:none; color:var(--mut); font-size:18px; }
+  .x:active { transform:none; box-shadow:none; color:var(--red); }
+
   ul { list-style:none; padding:0; margin:12px 0 0; }
-  li { display:flex; align-items:center; gap:8px; padding:8px 0; border-top:1px solid var(--line); }
-  li span.n { flex:1; } li small { color:var(--mut); }
-  .x { background:none; color:var(--mut); padding:4px 8px; }
-  .big { font-size:30px; font-weight:700; text-align:center; margin:14px 0; color:var(--acc); }
+  li { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:10px 0; border-top:1px dashed var(--line); animation:pop .25s both; }
+  li span.n { flex:1; font-weight:600; min-width:90px; overflow-wrap:anywhere; } li small { color:var(--mut); }
+  li button:not(.x), li a.btn { min-height:42px; padding:8px 14px; font-size:14px; }
+  #list, #links { counter-reset:n; }
+  #list li::before, #links li::before { counter-increment:n; content:counter(n); width:30px; height:30px; flex:0 0 30px; display:grid; place-items:center; border-radius:50%;
+    background:linear-gradient(180deg,var(--gold),#e0a526); color:#5a3a00; font-weight:700; font-size:14px; }
+
+  .gift { font-size:68px; text-align:center; line-height:1; margin:4px 0 6px; animation:wiggle 2.6s ease-in-out infinite; transform-origin:50% 90%; }
+  .big { font-family:'Mountains of Christmas',Georgia,serif; font-size:clamp(38px,13vw,58px); line-height:1.1; text-align:center; margin:14px 0 6px; color:var(--red); animation:pop .6s cubic-bezier(.2,1.6,.4,1) both; overflow-wrap:anywhere; }
   .hint { font-size:13px; color:var(--mut); }
-  .hide { display:none; }
-  .log { max-height:260px; overflow:auto; display:flex; flex-direction:column; gap:6px; margin:10px 0; }
-  .b { max-width:80%; padding:8px 12px; border-radius:14px; background:var(--line); word-wrap:break-word; }
-  .b.me { align-self:flex-end; background:var(--acc); color:#fff; }
+  .hide { display:none !important; }
+
+  .log { max-height:min(46vh,320px); overflow:auto; display:flex; flex-direction:column; gap:7px; margin:12px 0; padding:2px; -webkit-overflow-scrolling:touch; }
+  .b { max-width:82%; padding:9px 14px; border-radius:18px 18px 18px 6px; background:#e3f2e9; word-wrap:break-word; animation:pop .25s both; }
+  .b.me { align-self:flex-end; border-radius:18px 18px 6px 18px; background:linear-gradient(180deg,var(--red2),var(--red)); color:#fff; }
+
+  .wrow { display:grid; grid-template-columns:1fr auto; gap:8px; margin-top:10px; padding:10px; background:#fff3dc; border-radius:16px; }
+  .wrow > :nth-child(1){ grid-area:1/1; } .wrow > :nth-child(2){ grid-area:2/1/3/3; } .wrow > :nth-child(3){ grid-area:1/2; }
+  .foot { text-align:center; color:#9fd4bd; margin:26px 0 0; font-size:14px; }
+
+  .cf { position:fixed; top:-40px; z-index:5; pointer-events:none; animation:fall 2.6s ease-in forwards; }
+
+  @keyframes blink { 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
+  @keyframes rise { from{ opacity:0; transform:translateY(14px); } to{ opacity:1; transform:none; } }
+  @keyframes pop { from{ opacity:0; transform:scale(.85); } to{ opacity:1; transform:none; } }
+  @keyframes wiggle { 0%,60%,100%{ transform:rotate(0); } 68%{ transform:rotate(-9deg); } 76%{ transform:rotate(8deg); } 84%{ transform:rotate(-5deg); } 92%{ transform:rotate(3deg); } }
+  @keyframes fall { to { transform:translate(var(--dx),115vh) rotate(540deg); } }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } #snow { display:none; } }
 </style>
 </head>
 <body>
+<canvas id="snow" aria-hidden="true"></canvas>
 <main>
-  <h1>🎁 Amigo Invisible</h1>
+  <header class="hero">
+    <div class="lights" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+    <h1>Amigo Invisible</h1>
+  </header>
 
   <!-- Vista del participante -->
   <section id="view" class="hide">
     <p class="sub" id="vGroup"></p>
     <p id="vBad" class="card hide"></p>
     <div class="card" id="vCard">
+      <div class="gift" id="gift">🎁</div>
       <p>Hola <b id="vFrom"></b>, tu amigo invisible es un secreto. Asegúrate de que nadie mira tu pantalla.</p>
-      <button class="full" id="reveal">Ver a quién me tocó</button>
+      <button class="full" id="reveal">🎅 Ver a quién me tocó</button>
       <div id="result" class="hide">
         <div class="big" id="vTo"></div>
         <p class="hint" id="vInfo"></p>
@@ -54,7 +104,7 @@
 
   <!-- Vista del organizador -->
   <section id="admin">
-    <p class="sub">Sin cuentas ni servidor. Haz el sorteo y envía a cada persona su enlace secreto por WhatsApp.</p>
+    <p class="sub">Crea el grupo, haz el sorteo y envía a cada persona su enlace secreto por WhatsApp. 🎄</p>
 
     <div class="card">
       <label>Nombre del grupo</label>
@@ -66,21 +116,21 @@
     </div>
 
     <div class="card">
-      <b>Participantes</b>
+      <b>👥 Participantes</b>
       <div class="row">
         <div><label>Nombre</label><input id="pName" maxlength="40"></div>
         <div><label>WhatsApp (opcional)</label><input id="pPhone" inputmode="tel" placeholder="+34600000000"></div>
       </div>
       <button class="full sec" id="add">Añadir</button>
       <ul id="list"></ul>
-      <button class="full" id="draw">Hacer sorteo</button>
+      <button class="full" id="draw">🎲 Hacer sorteo</button>
       <p class="hint" id="msg"></p>
       <button class="full sec" id="reset">Empezar de cero</button>
       <p class="hint">Tus datos se guardan en este navegador; si recargas no se pierden.</p>
     </div>
 
     <div class="card hide" id="results">
-      <b>Enlaces secretos</b>
+      <b>🔗 Enlaces secretos</b>
       <p class="hint">Envía cada enlace solo a su dueño. Cuando termines, cierra esta pestaña para no ver los resultados.</p>
       <ul id="links"></ul>
       <div class="row" style="margin-top:12px">
@@ -90,10 +140,35 @@
       <p class="hint">Revocar o regenerar deja sin efecto los enlaces anteriores al instante, incluso si ya están abiertos.</p>
     </div>
   </section>
+  <p class="foot">🎄 ¡Felices fiestas! 🎄</p>
 </main>
 
 <script>
 const $ = id => document.getElementById(id);
+
+// Nieve de fondo (se desactiva con "reducir movimiento")
+(function snow() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const c = $('snow'), x = c.getContext('2d'); let w, h;
+  const size = () => { w = c.width = innerWidth; h = c.height = innerHeight; };
+  size(); addEventListener('resize', size);
+  const flakes = Array.from({ length: Math.min(70, Math.round(innerWidth / 8)) }, () => ({ x: Math.random() * innerWidth, y: Math.random() * innerHeight, r: 1 + Math.random() * 2.6, s: .3 + Math.random() * .9, d: Math.random() * 6 }));
+  (function tick() {
+    x.clearRect(0, 0, w, h); x.fillStyle = 'rgba(255,255,255,.85)'; x.beginPath();
+    for (const p of flakes) { p.y += p.s; p.d += .01; p.x += Math.sin(p.d) * .4; if (p.y > h + 5) { p.y = -5; p.x = Math.random() * w; } x.moveTo(p.x + p.r, p.y); x.arc(p.x, p.y, p.r, 0, 6.3); }
+    x.fill(); requestAnimationFrame(tick);
+  })();
+})();
+
+function confetti() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const E = ['🎉', '🎁', '⭐', '❄️', '🎄', '✨'];
+  for (let i = 0; i < 26; i++) {
+    const s = document.createElement('span'); s.className = 'cf'; s.textContent = E[i % E.length];
+    s.style.cssText = `left:${Math.random() * 100}vw;--dx:${(Math.random() - .5) * 160}px;animation-delay:${Math.random() * .4}s;font-size:${18 + Math.random() * 16}px`;
+    document.body.append(s); setTimeout(() => s.remove(), 3200);
+  }
+}
 const people = [];
 
 // Configuración de tu app web de Firebase (no es secreta). Ver SETUP-CHAT.md
@@ -165,7 +240,7 @@ async function openLink(h) {
       $('reveal').onclick = () => {
         $('vTo').textContent = d.t;
         $('vInfo').textContent = [d.b && 'Presupuesto: ' + d.b, d.d && 'Fecha: ' + d.d].filter(Boolean).join(' · ');
-        $('result').classList.remove('hide'); $('reveal').classList.add('hide');
+        $('result').classList.remove('hide'); $('reveal').classList.add('hide'); $('gift').classList.add('hide'); confetti();
       };
     }, () => fail('No se pudo cargar el enlace. Revisa tu conexión e inténtalo de nuevo.'));
   } catch { fail('No se pudo cargar el enlace. Revisa tu conexión e inténtalo de nuevo.'); }
@@ -186,8 +261,7 @@ async function startWishlists(d) {
     const l = el('input', { value: it.l, maxLength: 500, placeholder: 'Enlace (opcional)' });
     t.oninput = () => it.t = t.value; l.oninput = () => it.l = l.value;
     const x = el('button', { className: 'x', textContent: '✕' }); x.onclick = () => { items.splice(i, 1); paint(); };
-    const r = el('div', { className: 'row' }, t, l, x); r.style.cssText = 'margin-top:8px;align-items:center'; x.style.flex = '0 0 auto';
-    return r;
+    return el('div', { className: 'wrow' }, t, l, x);
   }));
   const add = el('button', { className: 'sec', textContent: '+ Añadir regalo' });
   add.onclick = () => { if (items.length < 30) { items.push({ t: '', l: '' }); paint(); } };
