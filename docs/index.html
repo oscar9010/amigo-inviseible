@@ -87,6 +87,16 @@
 const $ = id => document.getElementById(id);
 const people = [];
 
+// Configuración de tu app web de Firebase (no es secreta). Ver SETUP-CHAT.md
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyD0Dch5D-QVye33lj5NcdQ19aGGuhPEVAo",
+  authDomain: "amigo-invisible-c1e5a.firebaseapp.com",
+  projectId: "amigo-invisible-c1e5a",
+  storageBucket: "amigo-invisible-c1e5a.firebasestorage.app",
+  messagingSenderId: "226478486459",
+  appId: "1:226478486459:web:c8627858a8ab8f77eb8a9e"
+};
+
 // ---- codificación del enlace (en el fragmento #, nunca llega a ningún servidor) ----
 const enc = o => btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(o)))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
 const dec = s => JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')), c => c.charCodeAt(0))));
@@ -116,16 +126,6 @@ if (location.hash.length > 1) {
 }
 
 // ---- chat en tiempo real (Firebase Firestore) ----
-// Pega aquí la configuración de tu app web de Firebase. Ver SETUP-CHAT.md
-const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyD0Dch5D-QVye33lj5NcdQ19aGGuhPEVAo",
-  authDomain: "amigo-invisible-c1e5a.firebaseapp.com",
-  projectId: "amigo-invisible-c1e5a",
-  storageBucket: "amigo-invisible-c1e5a.firebasestorage.app",
-  messagingSenderId: "226478486459",
-  appId: "1:226478486459:web:c8627858a8ab8f77eb8a9e"
-};
-
 async function startChat(d) {
   const box = $('chats');
   if (!FIREBASE_CONFIG || !d.c1) {
@@ -200,8 +200,8 @@ $('draw').onclick = () => {
   const rid = () => enc(Array.from(crypto.getRandomValues(new Uint8Array(12))));
   const chatIds = order.map(rid);
   $('links').replaceChildren(...order.map((p, i) => {
-    const n = order.length;
-    const url = base + '#' + enc({ ...meta, f: p.name, t: order[(i + 1) % n].name, c1: chatIds[i], c2: chatIds[(i + n - 1) % n] });
+    const len = order.length;
+    const url = base + '#' + enc({ ...meta, f: p.name, t: order[(i + 1) % len].name, c1: chatIds[i], c2: chatIds[(i + len - 1) % len] });
     const text = `🎁 Hola ${p.name}! Tu amigo invisible${meta.g ? ' de ' + meta.g : ''} está listo. Mira a quién te tocó (es secreto): ${url}`;
     const li = document.createElement('li');
     const n = document.createElement('span'); n.className = 'n'; n.textContent = p.name;
